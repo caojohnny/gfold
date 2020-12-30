@@ -14,6 +14,15 @@ This project attempts to implement the G-FOLD algorithm in
 C++ as a demo that plots the some of the numerical examples
 in the original paper using matplotlib-cpp.
 
+# Disclaimer
+
+The algorithm is not fully discretized in this project.
+
+I am also not a rocket scientist. This is a demo - a toy -
+not a production-ready piece of code. I make no guarantees
+about the correctness nor the functional completeness of
+the project. USE AT YOUR OWN RISK!
+
 # Demo
 
 ![gfold.png](https://i.postimg.cc/gJDTqd4T/gfold.png)
