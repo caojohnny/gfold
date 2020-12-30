@@ -21,7 +21,7 @@ gfold::gfold::gfold(gfold_lander_data lander_data,
                     gfold_planet_data planet_data,
                     double duration,
                     double dt) :
-        gfold(lander_data, trajectory_data, planet_data, duration, duration, 1, dt) {
+        gfold(lander_data, std::move(trajectory_data), std::move(planet_data), duration, duration, 1, dt) {
 }
 
 bool gfold::gfold::p3p4(double t_f) {
@@ -31,7 +31,6 @@ bool gfold::gfold::p3p4(double t_f) {
     Eigen::Vector3d e_1{1, 0, 0};
     Eigen::Vector3d e_2{0, 1, 0};
 
-    double m_wet = lander_data.m_0 + lander_data.m_f;
     Eigen::Matrix3d S_omega = (Eigen::Matrix3d{} << 0, -planet_data.omega[2], planet_data.omega[1],
             planet_data.omega[2], 0, -planet_data.omega[0],
             -planet_data.omega[1], planet_data.omega[0], 0)
@@ -55,11 +54,11 @@ bool gfold::gfold::p3p4(double t_f) {
     const cvx::MatrixX &x = socp.addVariable("x", 6, steps);
     const cvx::MatrixX &r = x.topRows(3);
     const cvx::MatrixX &r_dot = x.bottomRows(3);
-    const cvx::MatrixX &m = socp.addVariable("m", 1, steps);
 
     // 3.1 Change of Variables
     // const cvx::MatrixX &slack = socp.addVariable("GAMMA", 1, steps);
     // const cvx::MatrixX &T = socp.addVariable("T", 3, steps);
+    // const cvx::MatrixX &m = socp.addVariable("m", 1, steps);
     const cvx::MatrixX &sigma = socp.addVariable("sigma", 1, steps);
     const cvx::MatrixX &u = socp.addVariable("u", 3, steps);
     const cvx::MatrixX &z = socp.addVariable("z", 1, steps);
@@ -68,10 +67,13 @@ bool gfold::gfold::p3p4(double t_f) {
     socp.addCostTerm(obj);
     socp.addConstraint(cvx::lessThan((cvx::par(E) * r.col(i_f) - cvx::par(trajectory_data.q)).norm(), obj));
 
+    // 3.1 Change of Variables
+    // socp.addConstraint(cvx::equalTo(m.col(0).sum(), m_wet));
+    // socp.addConstraint(cvx::box(0, lander_data.m_0 - lander_data.m_f, m.col(i_f).sum()));
     // Eq. (7) - Initial mass constraint
-    socp.addConstraint(cvx::equalTo(m.col(0).sum(), m_wet));
+    socp.addConstraint(cvx::equalTo(z.col(0).sum(), std::log(lander_data.m_0)));
     // Eq. (7) - Fuel use constraint
-    socp.addConstraint(cvx::box(0, lander_data.m_0 - lander_data.m_f, m.col(i_f).sum()));
+    socp.addConstraint(cvx::box(0, std::log(lander_data.m_0 - lander_data.m_f), z.col(i_f).sum()));
 
     // Eq. (8) - Initial position constraint
     socp.addConstraint(cvx::equalTo(r.col(0), cvx::par(trajectory_data.r_0)));
@@ -120,13 +122,14 @@ bool gfold::gfold::p3p4(double t_f) {
         socp.addConstraint(cvx::greaterThan(cvx::par(trajectory_data.n_hat).transpose() * u.col(i),
                                             cvx::par(std::cos(trajectory_data.theta)) * sigma.col(i).sum()));
 
-        double z_0 = std::log(m_wet - lander_data.alpha * lander_data.rho_2 * i * dt);
-        double exp_z_0 = std::exp(z_0);
+        double z_0 = std::log(lander_data.m_0 - lander_data.alpha * lander_data.rho_2 * i * dt);
+        double exp_z_0 = std::exp(-z_0);
         const cvx::Scalar &z_diff = z.col(i).sum() - cvx::par(z_0);
         // TODO: Squared dynamic var
-        // socp.addConstraint(cvx::box(cvx::par(rho_1 * exp_z_0) * (cvx::par(1) - z_diff + (z_diff * z_diff * cvx::par(2))),
-        // sigma.col(i)[0],
-        // cvx::par(rho_2 * exp_z_0) * (cvx::par(1) - z_diff))); // Eq. (37)
+        // socp.addConstraint(cvx::box(
+        //         cvx::par(lander_data.rho_1 * exp_z_0) * (cvx::par(1) - z_diff + (z_diff * z_diff * cvx::par(2))),
+        //         sigma.col(i)[0],
+        //         cvx::par(lander_data.rho_2 * exp_z_0) * (cvx::par(1) - z_diff)));
         // Eq. (36) - Maximum thrust constraint
         socp.addConstraint(cvx::lessThan(
                 sigma.col(i).sum(),
@@ -155,7 +158,6 @@ bool gfold::gfold::p3p4(double t_f) {
     // Store to the socp_state struct
     socp_state.i_f = i_f;
     socp.getVariableValue("x", socp_state.x);
-    socp.getVariableValue("m", socp_state.m);
     socp.getVariableValue("sigma", socp_state.sigma);
     socp.getVariableValue("u", socp_state.u);
     socp.getVariableValue("z", socp_state.z);
@@ -185,10 +187,6 @@ int gfold::gfold::get_time_steps() const {
 
 const Eigen::MatrixXd &gfold::gfold::get_state_vector() const {
     return socp_state.x;
-}
-
-const Eigen::MatrixXd &gfold::gfold::get_mass() const {
-    return socp_state.m;
 }
 
 const Eigen::MatrixXd &gfold::gfold::get_sigma() const {

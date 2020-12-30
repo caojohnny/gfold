@@ -1,7 +1,6 @@
 #ifndef GFOLD_GFOLD_H
 #define GFOLD_GFOLD_H
 
-#include <Eigen/Dense>
 #include <epigraph.hpp>
 
 namespace gfold {
@@ -11,12 +10,12 @@ namespace gfold {
      */
     struct gfold_lander_data {
         /**
-         * The dry mass of the lander, kilograms.
+         * The wet mass of the lander, kilograms.
          */
         double m_0;
         /**
-         * The initial mass of the fuel on the lander,
-         * kilograms.
+         * The initial mass of the fuel on the lander
+         * (such that m_0 = m_dry + m_f), kilograms.
          */
         double m_f;
         /**
@@ -208,18 +207,6 @@ namespace gfold {
          * instant
          */
         const Eigen::MatrixXd &get_state_vector() const;
-
-        /**
-         * Obtains the 1xN mass matrix containing the
-         * lander mass at t = j*dt.
-         *
-         * N is given by get_time_steps().
-         *
-         * Not valid if compute() does not return true.
-         *
-         * @return the mass matrix
-         */
-        const Eigen::MatrixXd &get_mass() const;
 
         /**
          * Obtains the thrust slack variable containing the
