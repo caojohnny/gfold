@@ -9,8 +9,8 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/DownloadEpigraph.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/DownloadMatplotlib.cmake)
 
 add_executable(gfold
-        main.cpp
-        gfold.h gfold.cpp)
+        src/main.cpp
+        src/gfold.h src/gfold.cpp)
 target_link_libraries(gfold
         PRIVATE epigraph
         PRIVATE mpl)
