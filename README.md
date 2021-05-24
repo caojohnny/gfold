@@ -39,7 +39,7 @@ the project. USE AT YOUR OWN RISK!
 #### Build
 
 ``` shell
-git clone https://github.com/AgentTroll/gfold.git
+git clone https://github.com/caojohnny/gfold.git
 cd gfold
 mkdir build && cd build
 cmake .. && make
